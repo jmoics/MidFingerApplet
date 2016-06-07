@@ -29,16 +29,15 @@ import javax.swing.JScrollPane;
 import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
 import javax.swing.ScrollPaneConstants;
-import javax.swing.SwingUtilities;
+
+import pe.com.fingerprint.util.UFMatcher;
+import pe.com.fingerprint.util.UFScanner;
 
 import com.sun.jna.Native;
 import com.sun.jna.Platform;
 import com.sun.jna.Pointer;
 import com.sun.jna.ptr.IntByReference;
 import com.sun.jna.ptr.PointerByReference;
-
-import pe.com.fingerprint.util.UFMatcher;
-import pe.com.fingerprint.util.UFScanner;
 
 public class AppletDemo
     extends JApplet
@@ -206,6 +205,10 @@ public class AppletDemo
         refTemplateArray = new PointerByReference();
     }
 
+    /**
+     * Inicializa los valores de los combos
+     * @param nFlag
+     */
     public void initVariable(final int nFlag)
     {
         if (nFlag == 1) { // UFS_Init\//
@@ -617,10 +620,8 @@ public class AppletDemo
                 @Override
                 public void actionPerformed(final java.awt.event.ActionEvent e)
                 {
-                    final boolean var = Boolean.getBoolean("user.home");
-                    if (var && nInitFlag != 0) {
+                    if (nInitFlag != 0) {
                         MsgBox("already init..");
-                        System.out.println("entro --> " + var);
                         // return;
                     } else {
                         nCaptureFlag = 0;
@@ -2133,7 +2134,7 @@ public class AppletDemo
     /**
      * @param args
      */
-    public static void main(final String[] args)
+    /*public static void main(final String[] args)
     {
         // TODO Auto-generated method stub
 
@@ -2146,7 +2147,7 @@ public class AppletDemo
                 thisClass.setVisible(true);
             }
         });
-    }
+    }*/
 
     /**
      * This is the default constructor
