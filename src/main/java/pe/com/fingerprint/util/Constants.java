@@ -41,4 +41,10 @@ public class Constants
 
     public static final Integer UFS_PARAM_USE_SIF_0 = 0;
     public static final Integer UFS_PARAM_USE_SIF_1 = 1;
+
+    public static final Integer UFS_PARAM_QUALITY_1 = 10;
+    public static final Integer UFS_PARAM_QUALITY_2 = 20;
+    public static final Integer UFS_PARAM_QUALITY_3 = 30;
+    public static final Integer UFS_PARAM_QUALITY_4 = 40;
+    public static final Integer UFS_PARAM_QUALITY_5 = 50;
 }

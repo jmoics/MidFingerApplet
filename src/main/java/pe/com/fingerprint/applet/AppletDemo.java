@@ -30,14 +30,14 @@ import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
 import javax.swing.ScrollPaneConstants;
 
-import pe.com.fingerprint.util.UFMatcher;
-import pe.com.fingerprint.util.UFScanner;
-
 import com.sun.jna.Native;
 import com.sun.jna.Platform;
 import com.sun.jna.Pointer;
 import com.sun.jna.ptr.IntByReference;
 import com.sun.jna.ptr.PointerByReference;
+
+import pe.com.fingerprint.util.UFMatcher;
+import pe.com.fingerprint.util.UFScanner;
 
 public class AppletDemo
     extends JApplet
@@ -67,6 +67,7 @@ public class AppletDemo
     private JLabel jLabel_parameter = null;
     private final JPanel jContentPane1 = null;
     private JList jList_msg_log = null;
+    private JScrollPane listLogScrollPane = null;
     private JLabel jLabel_sense1 = null;
     private JLabel jLabel_match = null;
     private JLabel jLabel_security_levle = null;
@@ -1324,6 +1325,11 @@ public class AppletDemo
             jList_msg_log = new JList(listLogModel);
             jList_msg_log.setBounds(new Rectangle(13, 476, 406, 66));
             jList_msg_log.setAutoscrolls(true);
+
+            listLogScrollPane = new JScrollPane(jList_msg_log);
+            listLogScrollPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED);
+            listLogScrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+
             jList_msg_log.addListSelectionListener(new javax.swing.event.ListSelectionListener()
             {
                 @Override
@@ -1592,7 +1598,7 @@ public class AppletDemo
                         libScanner.UFS_ClearCaptureImageBuffer(hScanner);
                         setStatusMsg("Place a finger");
 
-                        int nRes = libScanner.UFS_CaptureSingleImage(hScanner);
+                        int nRes = testCallStartCapturing(hScanner);
                         if (nRes != 0) {
                             setStatusMsg("caputure single image fail!! " + nRes);
                             return;
@@ -1603,37 +1609,43 @@ public class AppletDemo
                         final IntByReference refTemplateSize = new IntByReference();
                         final IntByReference refTemplateQuality = new IntByReference();
 
-                        nRes = libScanner.UFS_ExtractEx(hScanner, MAX_TEMPLATE_SIZE, bTemplate, refTemplateSize,
-                                        refTemplateQuality);
-                        if (nRes == 0) {
-                            libMatcher.UFM_IdentifyInit(hMatcher, bTemplate, refTemplateSize.getValue());
+                        try {
+                            Thread.sleep(500);
+                            nRes = libScanner.UFS_ExtractEx(hScanner, MAX_TEMPLATE_SIZE, bTemplate, refTemplateSize,
+                                            refTemplateQuality);
+                            if (nRes == 0) {
+                                libMatcher.UFM_IdentifyInit(hMatcher, bTemplate, refTemplateSize.getValue());
 
-                            int nMatchResult = 0;
-                            final IntByReference refIdentifyRes = new IntByReference();
-                            int i = 0;
+                                int nMatchResult = 0;
+                                final IntByReference refIdentifyRes = new IntByReference();
+                                int i = 0;
 
-                            for (i = 0; i < nTemplateCnt; i++) {
-                                nRes = libMatcher.UFM_IdentifyNext(hMatcher, byteTemplateArray[i],
-                                                intTemplateSizeArray[i], refIdentifyRes);
-                                if (nRes == 0) {
-                                    if (refIdentifyRes.getValue() == 1) {
-                                        setStatusMsg("Identfy success!!  match index number:" + (i + 1));
-                                        MsgBox("Identfy success!! index number:" + (i + 1));
-                                        nMatchResult = 1;
-                                        break;
-                                    } else {
+                                for (i = 0; i < nTemplateCnt; i++) {
+                                    nRes = libMatcher.UFM_IdentifyNext(hMatcher, byteTemplateArray[i],
+                                                    intTemplateSizeArray[i], refIdentifyRes);
+                                    if (nRes == 0) {
+                                        if (refIdentifyRes.getValue() == 1) {
+                                            setStatusMsg("Identfy success!!  match index number:" + (i + 1));
+                                            MsgBox("Identfy success!! index number:" + (i + 1));
+                                            nMatchResult = 1;
+                                            break;
+                                        } else {
 
+                                        }
                                     }
                                 }
-                            }
 
-                            if (nMatchResult != 1) {
+                                if (nMatchResult != 1) {
+                                    MsgBox("Identfy fail!!");
+                                }
+                            } else {
+                                setStatusMsg("extract template fail!! " + nRes);
                                 MsgBox("Identfy fail!!");
+                                // return;
                             }
-                        } else {
-                            setStatusMsg("extract template fail!! " + nRes);
-                            MsgBox("Identfy fail!!");
-                            // return;
+                        } catch (final InterruptedException e1) {
+                            // TODO Auto-generated catch block
+                            e1.printStackTrace();
                         }
                     } else {
                         setStatusMsg("getCurrentScannerHandle fail!! ");
@@ -1688,7 +1700,7 @@ public class AppletDemo
 
                                         final int nSelectedValue = Integer
                                                         .parseInt((String) (jComboBox_enroll.getSelectedItem()));
-
+                                        System.out.println("template quality = " + refTemplateQuality.getValue());
                                         if (refTemplateQuality.getValue() < nSelectedValue) {
                                             MsgBox("template quality < " + nSelectedValue);
                                             // return;
@@ -2174,7 +2186,7 @@ public class AppletDemo
 
     @Override
     public void init() {
-        System.setProperty("jna.library.path", "C:/autentia/bin");
+        System.setProperty("jna.library.path", "C:/autentia/bin/x64");
         initialize();
     }
 
@@ -2273,7 +2285,8 @@ public class AppletDemo
             this.add(jLabel_enroll, null);
             this.add(getJComboBox_enroll(), null);
             this.add(jLabel_parameter, null);
-            this.add(getJList_msg_log(), null);
+            this.add(getJList_msg_log());
+            this.add(listLogScrollPane, null);
             this.add(jLabel_sense1, null);
             this.add(jLabel_match, null);
             this.add(jLabel_security_levle, null);
@@ -2289,7 +2302,7 @@ public class AppletDemo
             this.add(jLabel_scanner_list, null);
             this.add(getJButton_clear(), null);
             this.add(getImagePanel(), null);
-            this.add(getJList1_scanner_list(), null);
+            this.add(getJList1_scanner_list());
             this.add(listScrollPane, null);
             this.add(getJComboBox_bri(), null);
             this.add(getJComboBox_sens(), null);

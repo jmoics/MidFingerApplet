@@ -1,5 +1,7 @@
 package pe.com.fingerprint.util;
 
+import javax.swing.JOptionPane;
+
 import com.sun.jna.Native;
 import com.sun.jna.Pointer;
 import com.sun.jna.ptr.IntByReference;
@@ -33,7 +35,7 @@ public class ScannerUtil
      * Obtiene el manejador del scanner utilizando el indice que lo identifica en memoria (detectado en UpdateScannerList)
      * @return
      */
-    public static Pointer GetCurrentScannerHandle(final UFScanner _libScanner)
+    public static Pointer getCurrentScannerHandle(final UFScanner _libScanner)
     {
         Pointer hScanner = null;
         int nRes = 0;
@@ -60,7 +62,7 @@ public class ScannerUtil
                                     final Pointer _hMatcher)
     {
         Pointer hScanner = null;
-        hScanner = GetCurrentScannerHandle(_libScanner);
+        hScanner = getCurrentScannerHandle(_libScanner);
 
         final IntByReference pValue = new IntByReference();
 
@@ -131,7 +133,7 @@ public class ScannerUtil
     /**
      * Especie de listener que detecta cuando se conecta o se desconecta el dispositivo scanner (luego del Init).
      */
-    public static Pointer UpdateScannerList(final UFScanner _libScanner)
+    public static Pointer updateScannerList(final UFScanner _libScanner)
     {
         int nRes = 0;
         final PointerByReference hTempScanner = new PointerByReference();
@@ -170,5 +172,41 @@ public class ScannerUtil
             }
         }
         return hScanner;
+    }
+
+    /**
+     * Inicia el listener para captura de la imagen.
+     * @return
+     */
+    public static int callStartCapturing(final UFScanner _libScanner,
+                                  final Pointer _hScanner,
+                                  final UFScanner.UFS_CAPTURE_PROC _pCaptureProc)
+    {
+        int nRes = 0;
+        final PointerByReference refParam = new PointerByReference();
+
+        if (_hScanner != null) {
+            System.out.println("UFS_StartCapturing,get current scanner handle success! : " + _hScanner);
+
+            // inicia el listener de captura de huella para que pueda inicializarse y capturar la imagen
+            nRes = _libScanner.UFS_StartCapturing(_hScanner, _pCaptureProc, refParam);
+
+            if (nRes == 0) {
+                System.out.println("UFS_StartCapturing success!!");
+                System.out.println("UFS_StartCapturing success!!");
+                //nCaptureFlag = 1;
+            } else {
+                System.out.println("UFS_StartCapturing fail!! code:" + nRes);
+            }
+        } else {
+            System.out.println("UFS_StartCapturing,GetScannerHandle fail!!");
+            System.out.println("UFS_StartCapturing,get Scanner handle fail!!");
+        }
+        return nRes;
+    }
+
+    public static void MsgBox(final String log)
+    {
+        JOptionPane.showMessageDialog(null, log);
     }
 }

@@ -1,22 +1,24 @@
 package pe.com.fingerprint.applet;
 
-import java.awt.BorderLayout;
 import java.awt.Graphics;
 import java.awt.Image;
 import java.awt.Rectangle;
 import java.awt.image.BufferedImage;
 
 import javax.swing.JApplet;
+import javax.swing.JButton;
 import javax.swing.JPanel;
-
-import pe.com.fingerprint.util.ScannerUtil;
-import pe.com.fingerprint.util.UFMatcher;
-import pe.com.fingerprint.util.UFScanner;
 
 import com.sun.jna.Native;
 import com.sun.jna.Pointer;
 import com.sun.jna.ptr.IntByReference;
 import com.sun.jna.ptr.PointerByReference;
+
+import pe.com.fingerprint.util.Constants;
+import pe.com.fingerprint.util.FingerPrintAppletException;
+import pe.com.fingerprint.util.ScannerUtil;
+import pe.com.fingerprint.util.UFMatcher;
+import pe.com.fingerprint.util.UFScanner;
 
 /**
  * TODO comment!
@@ -27,21 +29,26 @@ import com.sun.jna.ptr.PointerByReference;
 public class RegisterApplet
     extends JApplet
 {
+    public RegisterApplet() {
+    }
     private UFScanner libScanner = null;
     private UFMatcher libMatcher = null;
     private final Image fingerImg = null;
     private ImagePanel imgPanel = null;
-    private int nScannerNumber = 0;
+    private Integer nScannerNumber = 0;
     private Pointer hMatcher = null;
     private PointerByReference refTemplateArray = null; // @jve:decl-index=0:
     private final Pointer[] pArray = null;
     private final String[] strTemplateArray = null;
-    private byte[][] byteTemplateArray = null;
-    private int[] intTemplateSizeArray = null;
+    private byte[] byteTemplateArray = null;
+    private Integer intTemplateSizeArray = null;
     private final int MAX_TEMPLATE_SIZE = 1024;
     private Integer callbackCount = 0;
     private Integer nInitFlag = 0;
     private Integer nCaptureFlag = 0;
+    private JButton jBtnEnroll;
+    private JButton jBtnSave;
+
     /**
      * Define el listener para la coneccion y desconeccion del scanner
      */
@@ -59,7 +66,7 @@ public class RegisterApplet
             System.out.println("void * pParam  value is " + pParam.getValue());
             System.out.println(callbackCount + "=========================================="); //
 
-            ScannerUtil.UpdateScannerList(libScanner);
+            ScannerUtil.updateScannerList(libScanner);
             return 1;
         }
     };
@@ -97,7 +104,7 @@ public class RegisterApplet
         Pointer hScanner = null;
 
         // Inicializa el manejador del scanner
-        hScanner = ScannerUtil.GetCurrentScannerHandle(libScanner);
+        hScanner = ScannerUtil.getCurrentScannerHandle(libScanner);
 
         // Obtiene la informacion del buffer que captura la imagen
         libScanner.UFS_GetCaptureImageBufferInfo(hScanner, refWidth, refHeight, refResolution);
@@ -122,7 +129,6 @@ public class RegisterApplet
                 if (nRes == 0) {
                     System.out.println("UFS_Init() success!!");
                     nInitFlag = 1;
-                    //getJTextField_status().setText("UFS_Init() success,nInitFlag value set 1");
                     //MsgBox("Scanner Init success!!");
                     nRes = ScannerUtil.testCallScanProcCallback(libScanner, pScanProc);
                     if (nRes == 0) {
@@ -140,11 +146,11 @@ public class RegisterApplet
                             if (nRes == 0) {
                                 hMatcher = refMatcher.getValue();
                                 // Obtiene la lista de scanners
-                                ScannerUtil.UpdateScannerList(libScanner); // list upate ==>
+                                ScannerUtil.updateScannerList(libScanner); // list upate ==>
                                 System.out.println("after upadtelist");
                                 ScannerUtil.initVariable(libScanner, libMatcher, hMatcher);
                                 System.out.println("after initVariable");
-                                initArray(100, 1024); // array size,template
+                                initArray(); // array size,template
                                                       // size
 
 
@@ -188,8 +194,7 @@ public class RegisterApplet
         }
     }
 
-    public void initArray(final int nArrayCnt,
-                          final int nMaxTemplateSize)
+    public void initArray()
     {
         if (byteTemplateArray != null) {
             byteTemplateArray = null;
@@ -199,8 +204,8 @@ public class RegisterApplet
             intTemplateSizeArray = null;
         }
 
-        byteTemplateArray = new byte[nArrayCnt][MAX_TEMPLATE_SIZE];
-        intTemplateSizeArray = new int[nArrayCnt];
+        byteTemplateArray = new byte[MAX_TEMPLATE_SIZE];
+        intTemplateSizeArray = 0;
         refTemplateArray = new PointerByReference();
     }
 
@@ -242,7 +247,12 @@ public class RegisterApplet
     {
         // TODO Auto-generated method stub
         super.init();
-        getJContentPane();
+        try {
+            getJContentPane();
+        } catch (final FingerPrintAppletException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
     }
 
     /*
@@ -284,15 +294,111 @@ public class RegisterApplet
         if (imgPanel == null) {
             imgPanel = new ImagePanel();
             imgPanel.setLayout(null);
-            imgPanel.setBounds(new Rectangle(260, 17, 270, 310));
+            imgPanel.setBounds(new Rectangle(20, 20, 320, 480));
 
         }
         return imgPanel;
     }
 
-    private void getJContentPane(){
-        final BorderLayout bl = new BorderLayout();
-        this.setLayout(bl);
-        this.add(getImagePanel(), BorderLayout.CENTER);
+    /**
+     * This method initializes jBtnEnroll
+     *
+     * @return javax.swing.JButton
+     */
+    private JButton getJBtnEnroll()
+        throws FingerPrintAppletException
+    {
+        if (jBtnEnroll == null) {
+            jBtnEnroll = new JButton();
+            jBtnEnroll.setBounds(new Rectangle(200, 550, 100, 25));
+            jBtnEnroll.setText("Capturar Huella");
+            jBtnEnroll.addActionListener(new java.awt.event.ActionListener()
+            {
+                @Override
+                public void actionPerformed(final java.awt.event.ActionEvent e)
+                {
+                    if (nInitFlag != 0) {
+                        Pointer hScanner = null;
+                        hScanner = ScannerUtil.getCurrentScannerHandle(libScanner);
+                        if (hScanner != null) {
+                            int nRes = libScanner.UFS_ClearCaptureImageBuffer(hScanner);
+                            System.out.println("place a finger");
+                            nRes = ScannerUtil.callStartCapturing(libScanner, hScanner, pCaptureProc);
+                            System.out.println("capture single image");
+                            if (nRes == 0) {
+                                final byte[] bTemplate = new byte[MAX_TEMPLATE_SIZE];
+                                final IntByReference refTemplateSize = new IntByReference();
+                                final IntByReference refTemplateQuality = new IntByReference();
+                                // Es necesario un sleep para que termine el scanneo antes de comenzar a extraer.
+                                try {
+                                    Thread.sleep(1000);
+                                } catch (final InterruptedException e1) {
+                                    e1.printStackTrace();
+                                }
+                                nRes = libScanner.UFS_ExtractEx(hScanner, MAX_TEMPLATE_SIZE, bTemplate, refTemplateSize,
+                                                refTemplateQuality);
+                                if (nRes == 0) {
+                                    System.out.println("save template file template size:" + refTemplateSize.getValue()
+                                                    + " quality:" + refTemplateQuality.getValue());
+
+                                    if (refTemplateQuality.getValue() < Constants.UFS_PARAM_QUALITY_5) {
+                                        ScannerUtil.MsgBox("template quality < " + Constants.UFS_PARAM_QUALITY_5);
+                                    } else {
+                                        final int tempsize = refTemplateSize.getValue();
+
+                                        System.arraycopy(bTemplate, 0, byteTemplateArray, 0,
+                                                        refTemplateSize.getValue());// byte[][]
+
+                                        intTemplateSizeArray = refTemplateSize.getValue();
+
+                                        System.out.println("enroll template array idx:"
+                                                        + " template size:"
+                                                        + intTemplateSizeArray);
+
+                                        drawCurrentFingerImage();
+
+                                        nCaptureFlag = 1;
+                                    }
+                                } else {
+                                    System.out.println("Enroll Image fail!! code:" + nRes);
+                                    final byte[] refErr = new byte[512];
+                                    nRes = libScanner.UFS_GetErrorString(nRes, refErr);
+                                    if (nRes == 0) {
+                                        System.out.println("==>UFS_GetErrorString err is "
+                                                        + Native.toString(refErr));
+                                    }
+                                }
+
+                            }
+                        } else {
+                            // scanner pointer null
+                        }
+                    } else {
+                        ScannerUtil.MsgBox("Scanner no inicializado, recargar la página!");
+                        // return;
+                    }
+                }
+            });
+
+        }
+        return jBtnEnroll;
+    }
+
+    private JButton getJBtnSave() {
+        if (jBtnSave == null) {
+            jBtnSave = new JButton("Grabar");
+            jBtnSave.setBounds(new Rectangle(300, 550, 100, 25));
+        }
+        return jBtnSave;
+    }
+
+    private void getJContentPane()
+        throws FingerPrintAppletException
+    {
+        this.setSize(560, 650);
+        this.setLayout(null);
+        getContentPane().add(getImagePanel(), null);
+        getContentPane().add(getJBtnEnroll(), null);
+        getContentPane().add(getJBtnSave(), null);
     }
 }
