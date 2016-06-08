@@ -3,17 +3,23 @@ package pe.com.fingerprint.applet;
 import java.awt.Graphics;
 import java.awt.Image;
 import java.awt.Rectangle;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.awt.image.BufferedImage;
 
 import javax.swing.JApplet;
 import javax.swing.JButton;
 import javax.swing.JPanel;
 
+import org.apache.commons.codec.binary.Base64;
+
 import com.sun.jna.Native;
 import com.sun.jna.Pointer;
 import com.sun.jna.ptr.IntByReference;
 import com.sun.jna.ptr.PointerByReference;
 
+import netscape.javascript.JSException;
+import netscape.javascript.JSObject;
 import pe.com.fingerprint.util.Constants;
 import pe.com.fingerprint.util.FingerPrintAppletException;
 import pe.com.fingerprint.util.ScannerUtil;
@@ -247,8 +253,24 @@ public class RegisterApplet
     {
         // TODO Auto-generated method stub
         super.init();
+        System.setProperty("jna.library.path", "C:/autentia/bin");
         try {
             getJContentPane();
+            if (libScanner == null) {
+                libScanner = (UFScanner) Native.loadLibrary("UFScanner", UFScanner.class);
+                libMatcher = (UFMatcher) Native.loadLibrary("UFMatcher", UFMatcher.class);
+                int nRes = libScanner.UFS_Uninit();
+                if (nRes == 0) {
+                    System.out.println("UFS_Uninit sucess 1!!");
+                    nRes = libMatcher.UFM_Delete(hMatcher);
+                    nInitFlag = 0;
+                } else {
+                    System.out.println("UFS_Uninit fail 1!!");
+                }
+                libScanner = null;
+                libMatcher = null;
+                initScanners();
+            }
         } catch (final FingerPrintAppletException e) {
             // TODO Auto-generated catch block
             e.printStackTrace();
@@ -264,7 +286,6 @@ public class RegisterApplet
     {
         // TODO Auto-generated method stub
         super.start();
-        initScanners();
     }
 
     /*
@@ -294,7 +315,7 @@ public class RegisterApplet
         if (imgPanel == null) {
             imgPanel = new ImagePanel();
             imgPanel.setLayout(null);
-            imgPanel.setBounds(new Rectangle(20, 20, 320, 480));
+            imgPanel.setBounds(new Rectangle(0, 0, 200, 300));
 
         }
         return imgPanel;
@@ -310,7 +331,7 @@ public class RegisterApplet
     {
         if (jBtnEnroll == null) {
             jBtnEnroll = new JButton();
-            jBtnEnroll.setBounds(new Rectangle(200, 550, 100, 25));
+            jBtnEnroll.setBounds(new Rectangle(0, 300, 100, 25));
             jBtnEnroll.setText("Capturar Huella");
             jBtnEnroll.addActionListener(new java.awt.event.ActionListener()
             {
@@ -387,18 +408,111 @@ public class RegisterApplet
     private JButton getJBtnSave() {
         if (jBtnSave == null) {
             jBtnSave = new JButton("Grabar");
-            jBtnSave.setBounds(new Rectangle(300, 550, 100, 25));
+            jBtnSave.setBounds(new Rectangle(100, 300, 100, 25));
+            jBtnSave.addActionListener(new ActionListener() {
+                @SuppressWarnings("restriction")
+                @Override
+                public void actionPerformed(final ActionEvent e) {
+                    JSObject jso = null;
+
+                    try {
+                        final byte[] image = getImageBuffer();
+                        final String base64Image = Base64.encodeBase64String(image);
+                        final byte[] imageTemplate = getImageBufferTemplate();
+                        final String base64ImageTemp = Base64.encodeBase64String(imageTemplate);
+                        jso = JSObject.getWindow(((JApplet)((JButton) e.getSource())
+                                        .getParent().getParent().getParent().getParent()));
+                        jso.call("notifyServer", base64Image, base64ImageTemp);
+                        System.out.println("notifyServer Fired!");
+                    } catch(final JSException ex) {
+                        System.out.println("Could not create JS Object. Javascript Disabled!");
+                    }
+
+                }
+            });
         }
         return jBtnSave;
+    }
+
+    /**
+     * @return
+     */
+    private byte[] getImageBuffer()
+    {
+        byte[] pImageData = null;
+        if (nInitFlag != 0) {
+            if (nCaptureFlag != 0) {
+                Pointer hScanner = null;
+                final IntByReference nWidth = new IntByReference();
+                final IntByReference nHeight= new IntByReference();
+                final IntByReference nResolution= new IntByReference();
+
+                hScanner = ScannerUtil.getCurrentScannerHandle(libScanner);
+                if (hScanner != null) {
+                    int nRes = libScanner.UFS_GetCaptureImageBufferInfo(hScanner, nWidth, nHeight, nResolution);
+                    if (nRes == 0) {
+                        pImageData = new byte[nWidth.getValue() * nHeight.getValue()];
+
+                        nRes = libScanner.UFS_GetCaptureImageBuffer(hScanner, pImageData);
+                        if (nRes == UFScanner.UFS_OK) {
+                            System.out.println("Image correctly captured: " + pImageData);
+                        } else {
+                            final byte[] refErr = new byte[512];
+                            nRes = libScanner.UFS_GetErrorString(nRes, refErr);
+                            if (nRes == 0) {
+                                System.out.println("==>UFS_GetErrorString err is " + Native.toString(refErr));
+                            }
+                        }
+                    } else {
+                        final byte[] refErr = new byte[512];
+                        nRes = libScanner.UFS_GetErrorString(nRes, refErr);
+                        if (nRes == 0) {
+                            System.out.println("==>UFS_GetErrorString err is " + Native.toString(refErr));
+                        }
+                    }
+                } else {
+                    System.out.println("No scanner available");
+                }
+            } else {
+                System.out.println("No Capture Image!");
+                ScannerUtil.MsgBox("Debe escanear su huella dactilar");
+            }
+        } else {
+            System.out.println("initiate!");
+        }
+
+        return pImageData;
+    }
+
+    /**
+     * @return
+     */
+    private byte[] getImageBufferTemplate()
+    {
+        byte[] filebA = null;
+        if (nInitFlag != 0) {
+            if (nCaptureFlag != 0) {
+                filebA = new byte[intTemplateSizeArray];
+                System.arraycopy(byteTemplateArray, 0, filebA, 0, intTemplateSizeArray);// byte[][]
+                System.out.println("Template correctly captured:! " + filebA);
+            } else {
+                System.out.println("No Capture Image!");
+                ScannerUtil.MsgBox("Debe escanear su huella dactilar");
+            }
+        } else {
+            System.out.println("initiate!");
+            // return;
+        }
+        return filebA;
     }
 
     private void getJContentPane()
         throws FingerPrintAppletException
     {
-        this.setSize(560, 650);
+        this.setSize(200, 325);
         this.setLayout(null);
-        getContentPane().add(getImagePanel(), null);
-        getContentPane().add(getJBtnEnroll(), null);
-        getContentPane().add(getJBtnSave(), null);
+        getContentPane().add(getJBtnEnroll());
+        getContentPane().add(getImagePanel());
+        getContentPane().add(getJBtnSave());
     }
 }
