@@ -179,8 +179,8 @@ public class ScannerUtil
      * @return
      */
     public static int callStartCapturing(final UFScanner _libScanner,
-                                  final Pointer _hScanner,
-                                  final UFScanner.UFS_CAPTURE_PROC _pCaptureProc)
+                                         final Pointer _hScanner,
+                                         final UFScanner.UFS_CAPTURE_PROC _pCaptureProc)
     {
         int nRes = 0;
         final PointerByReference refParam = new PointerByReference();
@@ -208,5 +208,16 @@ public class ScannerUtil
     public static void MsgBox(final String log)
     {
         JOptionPane.showMessageDialog(null, log);
+    }
+
+    public static void showErrorString(final UFScanner _libScanner,
+                                 Integer _nRes)
+    {
+        System.out.println("Enroll Image fail!! code:" + _nRes);
+        final byte[] refErr = new byte[512];
+        _nRes = _libScanner.UFS_GetErrorString(_nRes, refErr);
+        if (_nRes == 0) {
+            System.out.println("==>UFS_GetErrorString err is " + Native.toString(refErr));
+        }
     }
 }

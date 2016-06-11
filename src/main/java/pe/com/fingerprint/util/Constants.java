@@ -47,4 +47,7 @@ public class Constants
     public static final Integer UFS_PARAM_QUALITY_3 = 30;
     public static final Integer UFS_PARAM_QUALITY_4 = 40;
     public static final Integer UFS_PARAM_QUALITY_5 = 50;
+
+    public static final String SYSTEM_PATH_32 = "C:/autentia/bin";
+    public static final String SYSTEM_PATH_64 = "C:/autentia/bin/x64";
 }

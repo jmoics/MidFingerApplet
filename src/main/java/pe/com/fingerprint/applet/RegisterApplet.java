@@ -1,7 +1,6 @@
 package pe.com.fingerprint.applet;
 
 import java.awt.Graphics;
-import java.awt.Image;
 import java.awt.Rectangle;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -39,13 +38,9 @@ public class RegisterApplet
     }
     private UFScanner libScanner = null;
     private UFMatcher libMatcher = null;
-    private final Image fingerImg = null;
     private ImagePanel imgPanel = null;
     private Integer nScannerNumber = 0;
     private Pointer hMatcher = null;
-    private PointerByReference refTemplateArray = null; // @jve:decl-index=0:
-    private final Pointer[] pArray = null;
-    private final String[] strTemplateArray = null;
     private byte[] byteTemplateArray = null;
     private Integer intTemplateSizeArray = null;
     private final int MAX_TEMPLATE_SIZE = 1024;
@@ -123,7 +118,8 @@ public class RegisterApplet
         imgPanel.drawFingerImage(refWidth.getValue(), refHeight.getValue(), pImageData);
     }
 
-    private void initScanners() {
+    private void initScanners()
+    {
         if (nInitFlag == 0) {
             nCaptureFlag = 0;
             try {
@@ -135,17 +131,15 @@ public class RegisterApplet
                 if (nRes == 0) {
                     System.out.println("UFS_Init() success!!");
                     nInitFlag = 1;
-                    //MsgBox("Scanner Init success!!");
                     nRes = ScannerUtil.testCallScanProcCallback(libScanner, pScanProc);
                     if (nRes == 0) {
-                        //setStatusMsg("==>UFS_SetScannerCallback pScanProc ...");
                         // Una referencia a un entero para almacenar el numero del scaner
                         final IntByReference refNumber = new IntByReference();
                         // UFS_GetScannerNumber devuelve el numero del scanner en el entero de referencia
                         nRes = libScanner.UFS_GetScannerNumber(refNumber);
                         if (nRes == 0) {
                             nScannerNumber = refNumber.getValue();
-                            //setStatusMsg("UFS_GetScannerNumber() scanner number :" + nScannerNumber);
+                            // setStatusMsg("UFS_GetScannerNumber() scanner number :" + nScannerNumber);
                             final PointerByReference refMatcher = new PointerByReference();
                             // crea el matcher
                             nRes = libMatcher.UFM_Create(refMatcher);
@@ -156,42 +150,43 @@ public class RegisterApplet
                                 System.out.println("after upadtelist");
                                 ScannerUtil.initVariable(libScanner, libMatcher, hMatcher);
                                 System.out.println("after initVariable");
-                                initArray(); // array size,template
-                                                      // size
-
+                                initArray(); // array size,template size
 
                                 final IntByReference refValue = new IntByReference();
                                 final IntByReference refFastMode = new IntByReference();
                                 // security level (1~7)
                                 // 302 security level :UFM_PARAM_SECURITY_LEVEL
-                                nRes = libMatcher.UFM_GetParameter(hMatcher, UFMatcher.UFM_PARAM_SECURITY_LEVEL, refValue);
+                                nRes = libMatcher.UFM_GetParameter(hMatcher, UFMatcher.UFM_PARAM_SECURITY_LEVEL,
+                                                refValue);
                                 if (nRes == 0) {
-                                    System.out.println("Get security level,302(security) value is " + refValue.getValue());
+                                    System.out.println(
+                                                    "Get security level,302(security) value is " + refValue.getValue());
                                 } else {
                                     System.out.println("get security level fail! code: " + nRes);
                                 }
                             } else {
                                 System.out.println("UFM_Create fail!! code :" + nRes);
-                                // return;
+                                ScannerUtil.showErrorString(libScanner, nRes);
+                                ScannerUtil.MsgBox(
+                                                "Ocurrió un error al capturar su huella, por favor inténtelo nuevamente");
                             }
 
                         } else {
                             System.out.println("GetScannerNumber fail!! code :" + nRes);
-                            // setStatusMsg("GetScannerNumber fail!! code :" + nRes);
-                            // return;
+                            ScannerUtil.showErrorString(libScanner, nRes);
                         }
                     } else {
                         System.out.println("UFS_SetScannerCallback() fail,code :" + nRes);
+                        ScannerUtil.showErrorString(libScanner, nRes);
                     }
-                }
-                if (nRes != 0) {
+                } else {
                     System.out.println("Init() fail!!");
-                    //setStatusMsg("Init fail!! return code:" + nRes);
-                    //MsgBox("Scanner Init fail!!");
+                    ScannerUtil.showErrorString(libScanner, nRes);
+                    ScannerUtil.MsgBox("Ocurrió un error al capturar su huella, por favor inténtelo nuevamente");
                 }
             } catch (final Exception ex) {
-                //setStatusMsg("loadLlibrary : UFScanner,UFMatcher fail!!");
-                //MsgBox("loadLlibrary : UFScanner,UFMatcher fail!!");
+                // setStatusMsg("loadLlibrary : UFScanner,UFMatcher fail!!");
+                // MsgBox("loadLlibrary : UFScanner,UFMatcher fail!!");
                 // return;
             }
         } else {
@@ -212,7 +207,6 @@ public class RegisterApplet
 
         byteTemplateArray = new byte[MAX_TEMPLATE_SIZE];
         intTemplateSizeArray = 0;
-        refTemplateArray = new PointerByReference();
     }
 
     class ImagePanel
@@ -253,7 +247,14 @@ public class RegisterApplet
     {
         // TODO Auto-generated method stub
         super.init();
-        System.setProperty("jna.library.path", "C:/autentia/bin");
+        if (System.getProperty("sun.arch.data.model").equals("64")) {
+            System.setProperty("jna.library.path", Constants.SYSTEM_PATH_64);
+        } else if (System.getProperty("sun.arch.data.model").equals("32")) {
+            System.setProperty("jna.library.path", Constants.SYSTEM_PATH_32);
+        } else {
+            System.setProperty("jna.library.path", Constants.SYSTEM_PATH_32);
+        }
+
         try {
             getJContentPane();
             if (libScanner == null) {
@@ -363,7 +364,8 @@ public class RegisterApplet
                                                     + " quality:" + refTemplateQuality.getValue());
 
                                     if (refTemplateQuality.getValue() < Constants.UFS_PARAM_QUALITY_5) {
-                                        ScannerUtil.MsgBox("template quality < " + Constants.UFS_PARAM_QUALITY_5);
+                                        ScannerUtil.MsgBox("Calidad de la huella dactilar demasiado baja < "
+                                                            + Constants.UFS_PARAM_QUALITY_5);
                                     } else {
                                         final int tempsize = refTemplateSize.getValue();
 
