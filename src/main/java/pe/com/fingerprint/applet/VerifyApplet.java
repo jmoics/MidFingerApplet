@@ -436,6 +436,11 @@ public class VerifyApplet
                         if (hScanner != null) {
                             int nRes = libScanner.UFS_ClearCaptureImageBuffer(hScanner);
                             System.out.println("place a finger");
+                            try {
+                                Thread.sleep(1000);
+                            } catch (final InterruptedException e1) {
+                                e1.printStackTrace();
+                            }
                             nRes = ScannerUtil.callStartCapturing(libScanner, hScanner, pCaptureProc);
                             System.out.println("capture single image");
                             if (nRes == 0) {
@@ -448,7 +453,7 @@ public class VerifyApplet
                                 } catch (final InterruptedException e1) {
                                     e1.printStackTrace();
                                 }
-                                for (int i=0; i<10000; i++) {}
+                                for (int i=0; i<500000; i++) {}
                                 nRes = libScanner.UFS_ExtractEx(hScanner, MAX_TEMPLATE_SIZE, bTemplate, refTemplateSize,
                                                 refTemplateQuality);
                                 if (nRes == 0) {

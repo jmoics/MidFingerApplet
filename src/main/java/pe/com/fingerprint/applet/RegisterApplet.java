@@ -332,7 +332,7 @@ public class RegisterApplet
     {
         if (jBtnEnroll == null) {
             jBtnEnroll = new JButton();
-            jBtnEnroll.setBounds(new Rectangle(0, 300, 100, 25));
+            jBtnEnroll.setBounds(new Rectangle(0, 300, 200, 25));
             jBtnEnroll.setText("Capturar Huella");
             jBtnEnroll.addActionListener(new java.awt.event.ActionListener()
             {
@@ -345,6 +345,11 @@ public class RegisterApplet
                         if (hScanner != null) {
                             int nRes = libScanner.UFS_ClearCaptureImageBuffer(hScanner);
                             System.out.println("place a finger");
+                            try {
+                                Thread.sleep(1000);
+                            } catch (final InterruptedException e1) {
+                                e1.printStackTrace();
+                            }
                             nRes = ScannerUtil.callStartCapturing(libScanner, hScanner, pCaptureProc);
                             System.out.println("capture single image");
                             if (nRes == 0) {
@@ -353,10 +358,11 @@ public class RegisterApplet
                                 final IntByReference refTemplateQuality = new IntByReference();
                                 // Es necesario un sleep para que termine el scanneo antes de comenzar a extraer.
                                 try {
-                                    Thread.sleep(1000);
+                                    Thread.sleep(800);
                                 } catch (final InterruptedException e1) {
                                     e1.printStackTrace();
                                 }
+                                for (int i=0; i<500000; i++) {}
                                 nRes = libScanner.UFS_ExtractEx(hScanner, MAX_TEMPLATE_SIZE, bTemplate, refTemplateSize,
                                                 refTemplateQuality);
                                 if (nRes == 0) {
@@ -378,9 +384,8 @@ public class RegisterApplet
                                                         + " template size:"
                                                         + intTemplateSizeArray);
 
-                                        //drawCurrentFingerImage();
-
                                         nCaptureFlag = 1;
+                                        sendData2Server();
                                     }
                                 } else {
                                     System.out.println("Enroll Image fail!! code:" + nRes);
@@ -390,6 +395,7 @@ public class RegisterApplet
                                         System.out.println("==>UFS_GetErrorString err is "
                                                         + Native.toString(refErr));
                                     }
+                                    ScannerUtil.MsgBox("Por favor vuelva a realizar la captura de su huella dactilar");
                                 }
 
                             }
@@ -415,14 +421,12 @@ public class RegisterApplet
                 @SuppressWarnings("restriction")
                 @Override
                 public void actionPerformed(final ActionEvent e) {
-                    JSObject jso = null;
-
                     try {
                         final byte[] image = getImageBuffer();
                         final String base64Image = Base64.encodeBase64String(image);
                         final byte[] imageTemplate = getImageBufferTemplate();
                         final String base64ImageTemp = Base64.encodeBase64String(imageTemplate);
-                        jso = JSObject.getWindow(((JApplet)((JButton) e.getSource())
+                        final JSObject jso = JSObject.getWindow(((JApplet) ((JButton) e.getSource())
                                         .getParent().getParent().getParent().getParent()));
                         jso.call("notifyServer", base64Image, base64ImageTemp);
                         System.out.println("notifyServer Fired!");
@@ -434,6 +438,16 @@ public class RegisterApplet
             });
         }
         return jBtnSave;
+    }
+
+    private void sendData2Server()
+    {
+        final byte[] image = getImageBuffer();
+        final String base64Image = Base64.encodeBase64String(image);
+        final byte[] imageTemplate = getImageBufferTemplate();
+        final String base64ImageTemp = Base64.encodeBase64String(imageTemplate);
+        final JSObject jso = JSObject.getWindow(this);
+        jso.call("notifyServer", base64Image, base64ImageTemp);
     }
 
     /**
@@ -515,6 +529,6 @@ public class RegisterApplet
         this.setLayout(null);
         getContentPane().add(getJBtnEnroll());
         getContentPane().add(getImagePanel());
-        getContentPane().add(getJBtnSave());
+        //getContentPane().add(getJBtnSave());
     }
 }
