@@ -2,7 +2,14 @@ package pe.com.fingerprint.applet;
 
 import java.awt.Graphics;
 import java.awt.Rectangle;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.awt.image.BufferedImage;
+import java.io.BufferedInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
 
 import javax.swing.JApplet;
 import javax.swing.JButton;
@@ -32,6 +39,8 @@ import pe.com.fingerprint.util.UFScanner;
 public class VerifyApplet
     extends JApplet
 {
+    public VerifyApplet() {
+    }
 
     private UFScanner libScanner = null;
     private UFMatcher libMatcher = null;
@@ -54,12 +63,10 @@ public class VerifyApplet
      */
     UFScanner.UFS_SCANNER_PROC pScanProc = new UFScanner.UFS_SCANNER_PROC()
     {
-
         @Override
         public int callback(final String szScannerId,
                             final int bSensorOn,
-                            final PointerByReference pParam) // interface ..must
-                                                             // be implemeent
+                            final PointerByReference pParam) // interface ..must be implemeent
         {
             callbackCount++;
             System.out.println(callbackCount + "=========================================="); //
@@ -78,7 +85,6 @@ public class VerifyApplet
      */
     UFScanner.UFS_CAPTURE_PROC pCaptureProc = new UFScanner.UFS_CAPTURE_PROC()
     {
-
         @Override
         public int callback(final Pointer hScanner,
                             final int bFingerOn,
@@ -135,7 +141,6 @@ public class VerifyApplet
                     nInitFlag = 1;
                     nRes = ScannerUtil.testCallScanProcCallback(libScanner, pScanProc);
                     if (nRes == 0) {
-                        // setStatusMsg("==>UFS_SetScannerCallback pScanProc ...");
                         // Una referencia a un entero para almacenar el numero del scaner
                         final IntByReference refNumber = new IntByReference();
                         // UFS_GetScannerNumber devuelve el numero del scanner en el entero de referencia
@@ -169,8 +174,9 @@ public class VerifyApplet
                                 }
                             } else {
                                 System.out.println("UFM_Create fail!! code :" + nRes);
-                                ScannerUtil.MsgBox("Ocurrió un error al capturar su huella, por favor inténtelo nuevamente");
                                 ScannerUtil.showErrorString(libScanner, nRes);
+                                ScannerUtil.MsgBox(
+                                                "Ocurrió un error al capturar su huella, por favor inténtelo nuevamente");
                             }
 
                         } else {
@@ -211,9 +217,92 @@ public class VerifyApplet
         intTemplateSizeArray = 0;
     }
 
+    private void loadStoredTemplate() {
+        final String testParam = getParameter("testParam");
+        System.out.println("TestParametro --> " + testParam);
+        final String imageTemplateStr = getParameter("byteTemplateStoredArray");
+        System.out.println("Template --> " + imageTemplateStr);
+        this.byteTemplateStoredArray = Base64.decodeBase64(imageTemplateStr);
+        this.intTemplateSizeStoredArray = this.byteTemplateStoredArray.length;
+    }
+
+    private void verifyFingerPrint() {
+
+        Pointer hScanner = null;
+        hScanner = ScannerUtil.getCurrentScannerHandle(libScanner);
+
+        if (hScanner != null) {
+            libScanner.UFS_ClearCaptureImageBuffer(hScanner);
+
+            final IntByReference refVerify = new IntByReference();
+
+            final int nRes = libMatcher.UFM_Verify(hMatcher, byteTemplateStoredArray, intTemplateSizeStoredArray,
+                            byteTemplateArray, intTemplateSizeArray,
+                            refVerify);// byte[][]
+            if (nRes == 0) {
+                try {
+                    Thread.sleep(2000);
+                } catch (final InterruptedException e1) {
+                    e1.printStackTrace();
+                }
+                if (refVerify.getValue() == 1) {
+                    System.out.println("verify success!!");
+                    sendResult(true);
+                    //MsgBox("verify success!! enroll_id: " + (nSelectedIdx + 1));
+                } else {
+                    System.out.println("verify fail!!");
+                    sendResult(false);
+                    //MsgBox("verify fail!! enroll_id: " + (nSelectedIdx + 1));
+                }
+            } else {
+                System.out.println("Error al realizar el match");
+                ScannerUtil.showErrorString(libScanner, nRes);
+            }
+
+
+        } else {
+            System.out.println("getCurrentScannerHandle fail!! ");
+            //return;
+        }
+    }
+
+    private void sendResult(final Boolean _verify) {
+        final byte[] fileId = getClienteIdFile();
+        final String strId = Base64.encodeBase64String(fileId);
+        try {
+            final JSObject jso = JSObject.getWindow(this);
+            jso.call("notifyServer", _verify, strId);
+            System.out.println("notifyServer Fired!");
+        } catch(final JSException ex) {
+            System.out.println("Could not create JS Object. Javascript Disabled!");
+        }
+    }
+
+    private byte[] getClienteIdFile()
+    {
+        final String path = Constants.SYSTEM_STORE_IDPATH + File.separator + "store";
+        final File file = new File(path);
+        byte[] ret;
+        try {
+            final BufferedInputStream bis = new BufferedInputStream(new FileInputStream(file));
+            final ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            int n;
+            while ((n = bis.read()) != -1) {
+                baos.write(n);
+            }
+            ret = baos.toByteArray();
+            bis.close();
+            baos.close();
+        } catch (final IOException ex) {
+            throw new RuntimeException(ex);
+        }
+        return ret;
+    }
+
     class ImagePanel
         extends JPanel
     {
+
         // private PlanarImage image;
         private BufferedImage buffImage = null;
 
@@ -236,8 +325,13 @@ public class VerifyApplet
         {
             g.drawImage(buffImage, 0, 0, this);
         }
+
     }
 
+    /*
+     * (non-Javadoc)
+     * @see java.applet.Applet#init()
+     */
     @Override
     public void init()
     {
@@ -266,8 +360,8 @@ public class VerifyApplet
                 }
                 libScanner = null;
                 libMatcher = null;
-                initScanners();
                 loadStoredTemplate();
+                initScanners();
             }
         } catch (final FingerPrintAppletException e) {
             // TODO Auto-generated catch block
@@ -275,62 +369,48 @@ public class VerifyApplet
         }
     }
 
-    private void loadStoredTemplate() {
-        final String imageTemplateStr = this.getParameter("byteTemplateStoredArray");
-        this.byteTemplateStoredArray = Base64.decodeBase64(imageTemplateStr);
-        this.intTemplateSizeStoredArray = this.byteTemplateStoredArray.length;
+    /*
+     * (non-Javadoc)
+     * @see java.applet.Applet#start()
+     */
+    @Override
+    public void start()
+    {
+        // TODO Auto-generated method stub
+        super.start();
     }
 
-    private void verifyFingerPring() {
-
-        Pointer hScanner = null;
-        hScanner = ScannerUtil.getCurrentScannerHandle(libScanner);
-
-        if (hScanner != null) {
-            libScanner.UFS_ClearCaptureImageBuffer(hScanner);
-
-            final IntByReference refVerify = new IntByReference();
-
-
-            final int nRes = libMatcher.UFM_Verify(hMatcher, byteTemplateStoredArray, intTemplateSizeStoredArray,
-                            byteTemplateArray, intTemplateSizeArray,
-                            refVerify);// byte[][]
-            if (nRes == 0) {
-                try {
-                    Thread.sleep(2000);
-                } catch (final InterruptedException e1) {
-                    e1.printStackTrace();
-                }
-                if (refVerify.getValue() == 1) {
-                    System.out.println("verify success!!");
-                    sendResult(true);
-                    //MsgBox("verify success!! enroll_id: " + (nSelectedIdx + 1));
-                } else {
-                    System.out.println("verify fail!!");
-                    sendResult(false);
-                    //MsgBox("verify fail!! enroll_id: " + (nSelectedIdx + 1));
-                }
-            } else {
-                ScannerUtil.showErrorString(libScanner, nRes);
-            }
-
-
-        } else {
-            System.out.println("getCurrentScannerHandle fail!! ");
-            //return;
-        }
+    /*
+     * (non-Javadoc)
+     * @see java.applet.Applet#stop()
+     */
+    @Override
+    public void stop()
+    {
+        // TODO Auto-generated method stub
+        super.stop();
     }
 
-    private void sendResult(final Boolean _verify) {
-        JSObject jso = null;
+    /*
+     * (non-Javadoc)
+     * @see java.applet.Applet#destroy()
+     */
+    @Override
+    public void destroy()
+    {
+        // TODO Auto-generated method stub
+        super.destroy();
+    }
 
-        try {
-            jso = JSObject.getWindow(this);
-            jso.call("notifyServer", _verify);
-            System.out.println("notifyServer Fired!");
-        } catch(final JSException ex) {
-            System.out.println("Could not create JS Object. Javascript Disabled!");
+    private ImagePanel getImagePanel()
+    {
+        if (imgPanel == null) {
+            imgPanel = new ImagePanel();
+            imgPanel.setLayout(null);
+            imgPanel.setBounds(new Rectangle(0, 0, 200, 300));
+
         }
+        return imgPanel;
     }
 
     /**
@@ -364,10 +444,11 @@ public class VerifyApplet
                                 final IntByReference refTemplateQuality = new IntByReference();
                                 // Es necesario un sleep para que termine el scanneo antes de comenzar a extraer.
                                 try {
-                                    Thread.sleep(1000);
+                                    Thread.sleep(800);
                                 } catch (final InterruptedException e1) {
                                     e1.printStackTrace();
                                 }
+                                for (int i=0; i<10000; i++) {}
                                 nRes = libScanner.UFS_ExtractEx(hScanner, MAX_TEMPLATE_SIZE, bTemplate, refTemplateSize,
                                                 refTemplateQuality);
                                 if (nRes == 0) {
@@ -389,12 +470,11 @@ public class VerifyApplet
                                                         + " template size:"
                                                         + intTemplateSizeArray);
 
-                                        drawCurrentFingerImage();
-
-                                        // verify both templates
-                                        verifyFingerPring();
+                                        //drawCurrentFingerImage();
 
                                         nCaptureFlag = 1;
+
+                                        verifyFingerPrint();
                                     }
                                 } else {
                                     System.out.println("Enroll Image fail!! code:" + nRes);
@@ -404,6 +484,7 @@ public class VerifyApplet
                                         System.out.println("==>UFS_GetErrorString err is "
                                                         + Native.toString(refErr));
                                     }
+                                    ScannerUtil.MsgBox("Por favor vuelva a realizar la captura de su huella dactilar");
                                 }
 
                             }
@@ -421,15 +502,18 @@ public class VerifyApplet
         return jBtnEnroll;
     }
 
-    private ImagePanel getImagePanel()
-    {
-        if (imgPanel == null) {
-            imgPanel = new ImagePanel();
-            imgPanel.setLayout(null);
-            imgPanel.setBounds(new Rectangle(0, 0, 200, 300));
-
+    private JButton getJBtnVerify() {
+        if (jBtnSave == null) {
+            jBtnSave = new JButton("Verificar");
+            jBtnSave.setBounds(new Rectangle(100, 300, 100, 25));
+            jBtnSave.addActionListener(new ActionListener() {
+                @Override
+                public void actionPerformed(final ActionEvent e) {
+                    verifyFingerPrint();
+                }
+            });
         }
-        return imgPanel;
+        return jBtnSave;
     }
 
     private void getJContentPane()
@@ -439,6 +523,6 @@ public class VerifyApplet
         this.setLayout(null);
         getContentPane().add(getJBtnEnroll());
         getContentPane().add(getImagePanel());
-        //getContentPane().add(getJBtnSave());
+        //getContentPane().add(getJBtnVerify());
     }
 }

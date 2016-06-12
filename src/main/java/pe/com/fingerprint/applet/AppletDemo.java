@@ -1724,7 +1724,7 @@ public class AppletDemo
                                                                 + intTemplateSizeArray[nTemplateCnt]);
                                                 nTemplateCnt++;
 
-                                                drawCurrentFingerImage();
+                                                //drawCurrentFingerImage();
 
                                                 String szComboData = null;
                                                 szComboData = String.valueOf(nTemplateCnt);

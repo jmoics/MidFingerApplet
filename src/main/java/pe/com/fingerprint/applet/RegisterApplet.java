@@ -378,7 +378,7 @@ public class RegisterApplet
                                                         + " template size:"
                                                         + intTemplateSizeArray);
 
-                                        drawCurrentFingerImage();
+                                        //drawCurrentFingerImage();
 
                                         nCaptureFlag = 1;
                                     }

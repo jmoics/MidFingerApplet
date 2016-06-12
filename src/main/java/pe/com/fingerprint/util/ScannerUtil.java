@@ -213,7 +213,6 @@ public class ScannerUtil
     public static void showErrorString(final UFScanner _libScanner,
                                  Integer _nRes)
     {
-        System.out.println("Enroll Image fail!! code:" + _nRes);
         final byte[] refErr = new byte[512];
         _nRes = _libScanner.UFS_GetErrorString(_nRes, refErr);
         if (_nRes == 0) {

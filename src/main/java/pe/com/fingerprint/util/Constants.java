@@ -50,4 +50,5 @@ public class Constants
 
     public static final String SYSTEM_PATH_32 = "C:/autentia/bin";
     public static final String SYSTEM_PATH_64 = "C:/autentia/bin/x64";
+    public static final String SYSTEM_STORE_IDPATH = "C:/autentia/bin";
 }
