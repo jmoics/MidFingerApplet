@@ -1,11 +1,13 @@
 package pe.com.fingerprint.applet;
 
 import java.awt.Graphics;
+import java.awt.Image;
 import java.awt.Rectangle;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.image.BufferedImage;
 
+import javax.swing.ImageIcon;
 import javax.swing.JApplet;
 import javax.swing.JButton;
 import javax.swing.JPanel;
@@ -212,9 +214,8 @@ public class RegisterApplet
     class ImagePanel
         extends JPanel
     {
-
-        // private PlanarImage image;
         private BufferedImage buffImage = null;
+        private Image imageTemp;
 
         private void drawFingerImage(final int nWidth,
                                      final int nHeight,
@@ -236,6 +237,25 @@ public class RegisterApplet
             g.drawImage(buffImage, 0, 0, this);
         }
 
+        private void drawInitImage(final byte[] _imageData)
+        {
+            this.imageTemp = new ImageIcon(_imageData).getImage().getScaledInstance(200, 300, Image.SCALE_DEFAULT);
+
+            /*final BufferedImage resizedImg = new BufferedImage(200, 300, BufferedImage.TYPE_INT_ARGB);
+            final Graphics2D g2 = resizedImg.createGraphics();
+
+            g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+            g2.drawImage(new ImageIcon(_imageData).getImage(), 0, 0, 200, 300, imgPanel);
+            g2.dispose();*/
+            repaint();
+        }
+
+        @Override
+        public void paint(final Graphics g)
+        {
+            g.drawImage(imageTemp, 0, 0, this);
+            super.paint(g);
+        }
     }
 
     /*
@@ -270,6 +290,7 @@ public class RegisterApplet
                 }
                 libScanner = null;
                 libMatcher = null;
+                loadStoredTemplate();
                 initScanners();
             }
         } catch (final FingerPrintAppletException e) {
@@ -322,6 +343,15 @@ public class RegisterApplet
         return imgPanel;
     }
 
+    private void loadStoredTemplate() {
+        final String imageTemplateStr = getParameter("byteTemplateStoredArray");
+        if (imageTemplateStr != null && !imageTemplateStr.isEmpty()) {
+            System.out.println("Template --> " + imageTemplateStr);
+            final byte[] image = Base64.decodeBase64(imageTemplateStr);
+            this.imgPanel.drawInitImage(image);
+        }
+    }
+
     /**
      * This method initializes jBtnEnroll
      *
@@ -340,6 +370,7 @@ public class RegisterApplet
                 public void actionPerformed(final java.awt.event.ActionEvent e)
                 {
                     if (nInitFlag != 0) {
+                        imgPanel.imageTemp = null;
                         Pointer hScanner = null;
                         hScanner = ScannerUtil.getCurrentScannerHandle(libScanner);
                         if (hScanner != null) {
