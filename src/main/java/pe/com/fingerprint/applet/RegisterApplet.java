@@ -169,8 +169,8 @@ public class RegisterApplet
                             } else {
                                 System.out.println("UFM_Create fail!! code :" + nRes);
                                 ScannerUtil.showErrorString(libScanner, nRes);
-                                ScannerUtil.MsgBox(
-                                                "Ocurrió un error inicializar librerías, por favor contacte al Administrador");
+                                /*ScannerUtil.MsgBox(
+                                                "Ocurrió un error inicializar librerías, por favor contacte al Administrador");*/
                             }
 
                         } else {
@@ -184,7 +184,7 @@ public class RegisterApplet
                 } else {
                     System.out.println("Init() fail!!");
                     ScannerUtil.showErrorString(libScanner, nRes);
-                    ScannerUtil.MsgBox("Ocurrió un error al cargar las librerías, por favor contacte al Administrador");
+                    /*ScannerUtil.MsgBox("Ocurrió un error al cargar las librerías, por favor contacte al Administrador");*/
                 }
             } catch (final Exception ex) {
                 // setStatusMsg("loadLlibrary : UFScanner,UFMatcher fail!!");
