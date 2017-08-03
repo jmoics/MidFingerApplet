@@ -80,8 +80,8 @@ public class ValidateLaptopApplet
 
     private JButton getJBtnValidate() {
         if (jBtnValidate == null) {
-            jBtnValidate = new JButton("Validar");
-            jBtnValidate.setBounds(new Rectangle(0, 0, 100, 25));
+            jBtnValidate = new JButton("Asignar Laptop");
+            jBtnValidate.setBounds(new Rectangle(0, 0, 120, 24));
             jBtnValidate.addActionListener(new ActionListener() {
                 @Override
                 public void actionPerformed(final ActionEvent e) {
